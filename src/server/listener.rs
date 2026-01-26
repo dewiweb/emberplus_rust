@@ -328,18 +328,23 @@ async fn process_element(
         GlowElement::Command(cmd) => {
             match cmd {
                 GlowCommand::GetDirectory => {
-                    // Return children at path
+                    // Return children at path using qualified elements
                     let tree_guard = tree.read().await;
                     
                     if parent_path.is_empty() {
-                        // Return root children
+                        // Return root children with their paths
                         for child in tree_guard.children() {
-                            response.elements.push(child.read().to_glow_element());
+                            let child_guard = child.read();
+                            let child_path = vec![child_guard.number()];
+                            response.elements.push(child_guard.to_qualified_glow_element(&child_path));
                         }
                     } else if let Some(node) = tree_guard.get_by_path(&parent_path) {
                         let node_guard = node.read();
                         for child in node_guard.children() {
-                            response.elements.push(child.read().to_glow_element());
+                            let child_guard = child.read();
+                            let mut child_path = parent_path.clone();
+                            child_path.push(child_guard.number());
+                            response.elements.push(child_guard.to_qualified_glow_element(&child_path));
                         }
                     }
                 }

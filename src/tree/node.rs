@@ -514,7 +514,7 @@ impl TreeNode {
         };
     }
 
-    /// Convert to a Glow element.
+    /// Convert to a Glow element (non-qualified, for nested children).
     pub fn to_glow_element(&self) -> GlowElement {
         match &self.contents {
             NodeContents::Node { identifier, description, is_root, is_online, schema_identifiers } => {
@@ -524,9 +524,7 @@ impl TreeNode {
                 node.is_root = *is_root;
                 node.is_online = *is_online;
                 node.schema_identifiers = schema_identifiers.clone();
-                node.children = self.children.values()
-                    .map(|c| c.read().to_glow_element())
-                    .collect();
+                // Don't include children for non-qualified - client should request them
                 GlowElement::Node(node)
             }
             NodeContents::Parameter { identifier, description, value, minimum, maximum, access, format, enumeration, factor, is_online, formula, step, default, parameter_type, stream_identifier, enum_map } => {
@@ -572,6 +570,66 @@ impl TreeNode {
                 matrix.connections = connections.clone();
                 matrix.labels = labels.clone();
                 GlowElement::Matrix(matrix)
+            }
+        }
+    }
+
+    /// Convert to a qualified Glow element with full path.
+    /// This is the correct format for server responses.
+    pub fn to_qualified_glow_element(&self, path: &EmberPath) -> GlowElement {
+        match &self.contents {
+            NodeContents::Node { identifier, description, is_root, is_online, schema_identifiers } => {
+                let mut node = GlowNode::new(self.number);
+                node.identifier = identifier.clone();
+                node.description = description.clone();
+                node.is_root = *is_root;
+                node.is_online = *is_online;
+                node.schema_identifiers = schema_identifiers.clone();
+                GlowElement::QualifiedNode(path.clone(), node)
+            }
+            NodeContents::Parameter { identifier, description, value, minimum, maximum, access, format, enumeration, factor, is_online, formula, step, default, parameter_type, stream_identifier, enum_map } => {
+                let mut param = GlowParameter::new(self.number);
+                param.identifier = identifier.clone();
+                param.description = description.clone();
+                param.value = value.clone();
+                param.minimum = minimum.clone();
+                param.maximum = maximum.clone();
+                param.access = *access;
+                param.format = format.clone();
+                param.enumeration = enumeration.clone();
+                param.factor = *factor;
+                param.is_online = *is_online;
+                param.formula = formula.clone();
+                param.step = *step;
+                param.default = default.clone();
+                param.parameter_type = *parameter_type;
+                param.stream_identifier = *stream_identifier;
+                param.enum_map = enum_map.clone();
+                GlowElement::QualifiedParameter(path.clone(), param)
+            }
+            NodeContents::Function { identifier, description, arguments, result } => {
+                let mut func = GlowFunction::new(self.number);
+                func.identifier = identifier.clone();
+                func.description = description.clone();
+                func.arguments = arguments.clone();
+                func.result = result.clone();
+                GlowElement::QualifiedFunction(path.clone(), func)
+            }
+            NodeContents::Matrix { identifier, description, matrix_type, addressing_mode, target_count, source_count, max_connections_per_target, max_total_connections, targets, sources, connections, labels } => {
+                let mut matrix = GlowMatrix::new(self.number);
+                matrix.identifier = identifier.clone();
+                matrix.description = description.clone();
+                matrix.matrix_type = *matrix_type;
+                matrix.addressing_mode = *addressing_mode;
+                matrix.target_count = *target_count;
+                matrix.source_count = *source_count;
+                matrix.max_connections_per_target = *max_connections_per_target;
+                matrix.max_total_connections = *max_total_connections;
+                matrix.targets = targets.clone();
+                matrix.sources = sources.clone();
+                matrix.connections = connections.clone();
+                matrix.labels = labels.clone();
+                GlowElement::QualifiedMatrix(path.clone(), matrix)
             }
         }
     }
