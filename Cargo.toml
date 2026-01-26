@@ -1,0 +1,60 @@
+[package]
+name = "ember-plus"
+version = "0.1.0"
+edition = "2021"
+authors = ["Ember+ Rust Contributors"]
+description = "A complete Rust implementation of Lawo's Ember+ control protocol"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/user/emberplus_rust"
+keywords = ["ember", "lawo", "broadcast", "control", "protocol"]
+categories = ["network-programming", "encoding", "multimedia"]
+
+[lib]
+name = "ember_plus"
+path = "src/lib.rs"
+
+[[bin]]
+name = "ember-plus-cli"
+path = "src/main.rs"
+
+[dependencies]
+# Async runtime
+tokio = { version = "1.35", features = ["full"] }
+futures = "0.3"
+
+# Serialization
+bytes = "1.5"
+nom = "7.1"
+
+# Error handling
+thiserror = "1.0"
+anyhow = "1.0"
+
+# Logging
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+# Utilities
+parking_lot = "0.12"
+dashmap = "5.5"
+num-traits = "0.2"
+num-derive = "0.4"
+bitflags = "2.4"
+
+[dev-dependencies]
+tokio-test = "0.4"
+criterion = "0.5"
+proptest = "1.4"
+
+[features]
+default = ["client", "server"]
+client = []
+server = []
+
+[[example]]
+name = "client"
+path = "examples/client.rs"
+
+[[example]]
+name = "server"
+path = "examples/server.rs"
