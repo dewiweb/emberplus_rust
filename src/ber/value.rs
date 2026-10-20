@@ -139,6 +139,7 @@ impl BerValue {
                 }
                 16 => {
                     // SEQUENCE
+                    let mut inner = BerReader::new(value_bytes);
                     let mut items = Vec::new();
                     while inner.has_more() {
                         items.push(Self::decode_from_reader(&mut inner)?);

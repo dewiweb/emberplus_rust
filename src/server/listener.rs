@@ -268,7 +268,7 @@ async fn handle_client(
 
                         if !response.is_empty() {
                             let glow_bytes = codec::encode(&response)?;
-                            let _frame_bytes = S101Encoder::encode_ember_packet(&glow_bytes);
+                            let frame_bytes = S101Encoder::encode_ember_packet(&glow_bytes);
                             stream.write_all(&frame_bytes).await.map_err(Error::Io)?;
                         }
                     }
