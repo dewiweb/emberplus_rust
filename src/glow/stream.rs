@@ -2,7 +2,6 @@
 
 use super::element::{EmberValue, StreamFormat};
 use super::root::StreamEntry;
-use crate::error::Result;
 
 /// Stream manager for handling streaming parameter values.
 #[derive(Debug, Default)]

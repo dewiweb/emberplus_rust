@@ -4,7 +4,7 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use parking_lot::RwLock;
 
-use crate::error::{Error, Result};
+use crate::error::Result;
 use crate::glow::{
     EmberValue, ParameterType, ParameterAccess, MatrixType, MatrixAddressingMode,
     TupleItemDescription, StringIntegerPair, Label,
@@ -253,51 +253,88 @@ impl EmberTree {
 pub enum NodeContents {
     /// A container node
     Node {
+        /// Node identifier
         identifier: Option<String>,
+        /// Human-readable description
         description: Option<String>,
+        /// Whether this is the root node
         is_root: Option<bool>,
+        /// Whether the node is online
         is_online: Option<bool>,
+        /// Schema identifiers supported by this node
         schema_identifiers: Option<String>,
     },
     /// A parameter
     Parameter {
+        /// Parameter identifier
         identifier: Option<String>,
+        /// Human-readable description
         description: Option<String>,
+        /// Current value
         value: Option<EmberValue>,
+        /// Minimum allowed value
         minimum: Option<EmberValue>,
+        /// Maximum allowed value
         maximum: Option<EmberValue>,
+        /// Access rights (read/write)
         access: Option<ParameterAccess>,
+        /// Display format hint
         format: Option<String>,
+        /// Enumeration definition string
         enumeration: Option<String>,
+        /// Scaling factor for the raw value
         factor: Option<i32>,
+        /// Whether the parameter is online
         is_online: Option<bool>,
+        /// Formula for derived values
         formula: Option<String>,
+        /// Step increment for value changes
         step: Option<i32>,
+        /// Default value
         default: Option<EmberValue>,
+        /// Parameter type (integer, real, string, ...)
         parameter_type: Option<ParameterType>,
+        /// Identifier of the associated stream
         stream_identifier: Option<i32>,
+        /// Mapping between integers and their string labels
         enum_map: Vec<StringIntegerPair>,
     },
     /// A function
     Function {
+        /// Function identifier
         identifier: Option<String>,
+        /// Human-readable description
         description: Option<String>,
+        /// Argument descriptions
         arguments: Vec<TupleItemDescription>,
+        /// Result descriptions
         result: Vec<TupleItemDescription>,
     },
     /// A matrix
     Matrix {
+        /// Matrix identifier
         identifier: Option<String>,
+        /// Human-readable description
         description: Option<String>,
+        /// Matrix type (n-to-n, one-to-n, ...)
         matrix_type: Option<MatrixType>,
+        /// Addressing mode (linear or non-linear)
         addressing_mode: Option<MatrixAddressingMode>,
+        /// Number of targets
         target_count: Option<i32>,
+        /// Number of sources
         source_count: Option<i32>,
+        /// Maximum connections allowed per target
         max_connections_per_target: Option<i32>,
+        /// Maximum total connections allowed
         max_total_connections: Option<i32>,
+        /// Target numbers
         targets: Vec<i32>,
+        /// Source numbers
         sources: Vec<i32>,
+        /// Current connections
         connections: Vec<GlowConnection>,
+        /// Target/source labels
         labels: Vec<Label>,
     },
 }

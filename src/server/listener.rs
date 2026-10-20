@@ -5,14 +5,13 @@ use std::net::SocketAddr;
 use std::sync::Arc;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::{TcpListener, TcpStream};
-use tokio::sync::{mpsc, RwLock, Mutex};
+use tokio::sync::{mpsc, RwLock};
 use tracing::{debug, error, info, warn};
 
 use crate::error::{Error, Result};
 use crate::codec;
 use crate::glow::{
-    GlowRoot, GlowElement, GlowNode, GlowParameter, GlowFunction, 
-    GlowMatrix, GlowConnection, GlowCommand, EmberPath, EmberValue,
+    GlowRoot, GlowElement, GlowParameter, GlowCommand, EmberPath, EmberValue,
 };
 use crate::s101::{S101Codec, S101Encoder, S101Message};
 use crate::tree::{EmberTree, TreeNode, TreeNodeRef};
@@ -41,6 +40,7 @@ impl Default for ServerConfig {
 
 /// Client connection state.
 struct ClientConnection {
+    #[allow(dead_code)]
     addr: SocketAddr,
     subscriptions: Vec<EmberPath>,
 }
@@ -143,7 +143,7 @@ impl EmberServer {
         ]);
 
         let glow_bytes = codec::encode(&root)?;
-        let frame_bytes = S101Encoder::encode_ember_packet(&glow_bytes);
+        let _frame_bytes = S101Encoder::encode_ember_packet(&glow_bytes);
 
         // TODO: Send to subscribed clients
         // This would require maintaining client connection handles
@@ -268,7 +268,7 @@ async fn handle_client(
 
                         if !response.is_empty() {
                             let glow_bytes = codec::encode(&response)?;
-                            let frame_bytes = S101Encoder::encode_ember_packet(&glow_bytes);
+                            let _frame_bytes = S101Encoder::encode_ember_packet(&glow_bytes);
                             stream.write_all(&frame_bytes).await.map_err(Error::Io)?;
                         }
                     }

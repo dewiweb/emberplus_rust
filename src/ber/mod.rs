@@ -139,7 +139,7 @@ pub trait BerEncode {
 /// Trait for types that can be decoded from BER format.
 pub trait BerDecode: Sized {
     /// Decode a value from the reader.
-    fn decode(reader: &mut BerReader) -> Result<Self>;
+    fn decode(reader: &mut BerReader<'_>) -> Result<Self>;
 }
 
 // Implement BerEncode for primitive types
@@ -193,38 +193,38 @@ impl BerEncode for Vec<u8> {
 
 // Implement BerDecode for primitive types
 impl BerDecode for bool {
-    fn decode(reader: &mut BerReader) -> Result<Self> {
+    fn decode(reader: &mut BerReader<'_>) -> Result<Self> {
         reader.read_boolean()
     }
 }
 
 impl BerDecode for i64 {
-    fn decode(reader: &mut BerReader) -> Result<Self> {
+    fn decode(reader: &mut BerReader<'_>) -> Result<Self> {
         reader.read_integer()
     }
 }
 
 impl BerDecode for i32 {
-    fn decode(reader: &mut BerReader) -> Result<Self> {
+    fn decode(reader: &mut BerReader<'_>) -> Result<Self> {
         let value = reader.read_integer()?;
         i32::try_from(value).map_err(|_| BerError::IntegerConversion.into())
     }
 }
 
 impl BerDecode for f64 {
-    fn decode(reader: &mut BerReader) -> Result<Self> {
+    fn decode(reader: &mut BerReader<'_>) -> Result<Self> {
         reader.read_real()
     }
 }
 
 impl BerDecode for String {
-    fn decode(reader: &mut BerReader) -> Result<Self> {
+    fn decode(reader: &mut BerReader<'_>) -> Result<Self> {
         reader.read_utf8_string()
     }
 }
 
 impl BerDecode for Vec<u8> {
-    fn decode(reader: &mut BerReader) -> Result<Self> {
+    fn decode(reader: &mut BerReader<'_>) -> Result<Self> {
         reader.read_octet_string()
     }
 }

@@ -4,6 +4,7 @@ use super::node::{EmberTree, TreeNodeRef};
 
 /// A walker for traversing the Ember+ tree.
 pub struct TreeWalker<'a> {
+    #[allow(dead_code)]
     tree: &'a EmberTree,
     stack: Vec<(TreeNodeRef, Vec<i32>)>,
 }
@@ -91,8 +92,6 @@ pub fn find_by_pattern(tree: &EmberTree, pattern: &str) -> Vec<(TreeNodeRef, Vec
     }
     
     for (node, path) in TreeWalker::new(tree) {
-        let path_strs: Vec<String> = path.iter().map(|n| n.to_string()).collect();
-        let path_refs: Vec<&str> = path_strs.iter().map(|s| s.as_str()).collect();
         
         if matches(&path, &parts) {
             results.push((node, path));

@@ -74,7 +74,7 @@ async fn main() -> Result<()> {
         }
 
         // Now expand each child to see its parameters
-        for (num, id, desc) in &channel_children {
+        for (num, _id, desc) in &channel_children {
             let sub_path = format!("{}.{}", ch_path, num);
             println!("\n═══ Expanding: {} ({}) ═══", desc, sub_path);
             

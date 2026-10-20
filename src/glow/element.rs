@@ -1,8 +1,6 @@
 //! Glow element types.
 
-use crate::error::{GlowError, Result};
-use crate::ber::{Tag, BerReader, BerWriter};
-use super::tags;
+use crate::error::GlowError;
 
 /// Parameter type enumeration.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]

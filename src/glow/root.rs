@@ -1,8 +1,6 @@
 //! Glow root element and container types.
 
 use crate::error::{GlowError, Result};
-use crate::ber::{Tag, BerReader, BerWriter, BerValue};
-use super::tags;
 use super::element::EmberValue;
 
 /// A path through the Ember+ tree (sequence of node numbers).

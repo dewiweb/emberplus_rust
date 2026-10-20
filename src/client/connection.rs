@@ -2,16 +2,16 @@
 
 use std::sync::Arc;
 use std::time::Duration;
-use tokio::io::{AsyncReadExt, AsyncWriteExt, ReadHalf, WriteHalf};
+use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::TcpStream;
 use tokio::sync::{mpsc, Mutex, RwLock};
-use tokio::time::{timeout, interval};
+use tokio::time::timeout;
 use tracing::{debug, error, info, warn};
 
 use crate::error::{Error, Result};
 use crate::codec;
 use crate::glow::{
-    GlowRoot, GlowElement, GlowNode, GlowParameter, EmberPath,
+    GlowRoot, GlowElement, EmberPath,
     InvocationResult, parse_path, EmberValue, CommandBuilder,
 };
 use crate::s101::{S101Codec, S101Encoder, S101Message};
@@ -73,11 +73,13 @@ pub struct ChildInfo {
     pub element_type: ElementType,
     /// Parameter value if available
     pub value: Option<EmberValue>,
-    /// For parameters: min/max
+    /// For parameters: minimum value
     pub minimum: Option<EmberValue>,
+    /// For parameters: maximum value
     pub maximum: Option<EmberValue>,
-    /// For matrix: dimensions
+    /// For matrix: number of targets
     pub target_count: Option<i32>,
+    /// For matrix: number of sources
     pub source_count: Option<i32>,
 }
 
@@ -115,6 +117,7 @@ pub struct EmberClient {
     /// TCP write half (for sending)
     write_half: Arc<Mutex<Option<tokio::net::tcp::OwnedWriteHalf>>>,
     /// S101 codec
+    #[allow(dead_code)]
     codec: Arc<Mutex<S101Codec>>,
     /// Local tree cache
     tree: Arc<RwLock<EmberTree>>,
@@ -131,6 +134,7 @@ pub struct EmberClient {
     /// Channel to receive data from background reader
     rx: Arc<Mutex<Option<mpsc::Receiver<BackgroundMessage>>>>,
     /// Handle to background reader task
+    #[allow(dead_code)]
     reader_handle: Arc<Mutex<Option<tokio::task::JoinHandle<()>>>>,
 }
 
@@ -229,7 +233,6 @@ impl EmberClient {
         let mut accumulated_payload: Vec<u8> = Vec::new();
         
         let mut loop_count = 0u64;
-        let mut last_data_time = std::time::Instant::now();
         loop {
             loop_count += 1;
             
@@ -275,7 +278,6 @@ impl EmberClient {
             };
             
             debug!("Background reader: received {} bytes", n);
-            last_data_time = std::time::Instant::now();
             
             // Feed to decoder
             let mut codec_guard = codec.lock().await;
@@ -807,6 +809,7 @@ impl EmberClient {
     }
 
     /// Recursively expand an element's children.
+    #[allow(dead_code)]
     async fn expand_element(&self, element: &GlowElement, parent_path: Vec<i32>) -> Result<()> {
         match element {
             GlowElement::Node(node) => {
@@ -1099,6 +1102,7 @@ impl EmberClient {
     }
 
     /// Notify callbacks of updates.
+    #[allow(dead_code)]
     async fn notify_updates(&self, root: &GlowRoot) {
         // Notify stream callbacks
         let stream_callbacks = self.stream_callbacks.read().await;
@@ -1116,6 +1120,7 @@ impl EmberClient {
     }
 
     /// Recursively notify callbacks for element updates.
+    #[allow(dead_code)]
     async fn notify_element_updates(
         &self,
         element: &GlowElement,

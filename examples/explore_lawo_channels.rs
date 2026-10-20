@@ -22,16 +22,6 @@ async fn main() -> Result<()> {
     println!("✓ Connected!\n");
 
     // Known root paths from discovery
-    let root_nodes = vec![
-        (2, "Devices"),
-        (28548, "Channels"),
-        (671903, "Signals"),
-        (1873332, "Matrices"),
-        (1991112, "Monitoring Units"),
-        (1991198, "Production"),
-        (1991262, "identity"),
-        (1991269, "Console"),
-    ];
 
     // Explore Channels first (most likely to have faders)
     println!("════════════════════════════════════════════════════════════");
@@ -127,7 +117,7 @@ async fn explore_node_deep(client: &EmberClient, path: &str, depth: usize, max_d
 
             // Recursively explore children (limit to first 10 for large nodes)
             let limit = if child_numbers.len() > 10 && depth > 1 { 10 } else { child_numbers.len() };
-            for (i, &child_num) in child_numbers.iter().take(limit).enumerate() {
+            for &child_num in child_numbers.iter().take(limit) {
                 let child_path = format!("{}.{}", path, child_num);
                 Box::pin(explore_node_deep(client, &child_path, depth + 1, max_depth)).await;
             }

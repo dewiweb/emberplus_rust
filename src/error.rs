@@ -46,7 +46,12 @@ pub enum Error {
 
     /// Protocol version mismatch.
     #[error("Protocol version mismatch: expected {expected}, got {actual}")]
-    VersionMismatch { expected: u8, actual: u8 },
+    VersionMismatch {
+        /// Expected protocol version
+        expected: u8,
+        /// Actual protocol version received
+        actual: u8,
+    },
 
     /// Server rejected the request.
     #[error("Server rejected request: {0}")]
@@ -78,7 +83,12 @@ pub enum BerError {
 
     /// Invalid value encoding.
     #[error("Invalid value encoding for type {type_name}: {details}")]
-    InvalidValue { type_name: String, details: String },
+    InvalidValue {
+        /// Name of the type being decoded
+        type_name: String,
+        /// Details about the invalid value
+        details: String,
+    },
 
     /// Unsupported tag class.
     #[error("Unsupported tag class: {0}")]
@@ -86,7 +96,12 @@ pub enum BerError {
 
     /// Buffer too small.
     #[error("Buffer too small: need {needed}, have {available}")]
-    BufferTooSmall { needed: usize, available: usize },
+    BufferTooSmall {
+        /// Number of bytes needed
+        needed: usize,
+        /// Number of bytes available
+        available: usize,
+    },
 
     /// Invalid UTF-8 string.
     #[error("Invalid UTF-8 string: {0}")]
@@ -118,11 +133,21 @@ pub enum S101Error {
 
     /// CRC mismatch.
     #[error("CRC mismatch: expected 0x{expected:04X}, got 0x{actual:04X}")]
-    CrcMismatch { expected: u16, actual: u16 },
+    CrcMismatch {
+        /// Expected CRC value
+        expected: u16,
+        /// Computed CRC value
+        actual: u16,
+    },
 
     /// Frame too large.
     #[error("Frame too large: {size} bytes exceeds maximum {max}")]
-    FrameTooLarge { size: usize, max: usize },
+    FrameTooLarge {
+        /// Size of the received frame
+        size: usize,
+        /// Maximum allowed frame size
+        max: usize,
+    },
 
     /// Incomplete frame.
     #[error("Incomplete frame: need more data")]
@@ -146,7 +171,12 @@ pub enum GlowError {
 
     /// Invalid field value.
     #[error("Invalid field value for {field}: {details}")]
-    InvalidField { field: String, details: String },
+    InvalidField {
+        /// Name of the invalid field
+        field: String,
+        /// Details about the invalid value
+        details: String,
+    },
 
     /// Invalid tree structure.
     #[error("Invalid tree structure: {0}")]
@@ -162,7 +192,12 @@ pub enum GlowError {
 
     /// Type mismatch.
     #[error("Type mismatch: expected {expected}, got {actual}")]
-    TypeMismatch { expected: String, actual: String },
+    TypeMismatch {
+        /// Expected type
+        expected: String,
+        /// Actual type encountered
+        actual: String,
+    },
 
     /// Invalid matrix operation.
     #[error("Invalid matrix operation: {0}")]

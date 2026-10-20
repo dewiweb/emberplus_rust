@@ -125,7 +125,7 @@ async fn run_server(port: &str) -> Result<()> {
     // Create a sample tree
     let mut root = TreeNode::new_node(0);
     {
-        let mut root_guard = root.contents_mut();
+        let root_guard = root.contents_mut();
         if let ember_plus::tree::NodeContents::Node { identifier, description, is_root, .. } = root_guard {
             *identifier = Some("Root".to_string());
             *description = Some("Root node".to_string());

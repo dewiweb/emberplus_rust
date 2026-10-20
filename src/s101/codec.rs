@@ -1,9 +1,9 @@
 //! S101 codec for encoding and decoding streams.
 
-use bytes::{Buf, BufMut, BytesMut};
+use bytes::{BufMut, BytesMut};
 use crate::error::{S101Error, Result};
 use super::constants::*;
-use super::frame::{S101Frame, S101Message, EmberFlags};
+use super::frame::{S101Frame, S101Message};
 use super::crc;
 
 /// S101 stream decoder.
@@ -168,25 +168,6 @@ impl S101Encoder {
             S101Message::KeepAliveRequest => Self::encode_keepalive_request(),
             S101Message::KeepAliveResponse => Self::encode_keepalive_response(),
         }
-    }
-
-    /// Encode raw bytes with S101 framing.
-    fn encode_with_framing(data: &[u8]) -> Vec<u8> {
-        let mut output = Vec::with_capacity(data.len() * 2 + 4);
-        output.push(BOF);
-        
-        for &byte in data {
-            // Escape only: BOF (0xFE), EOF (0xFF), ESCAPE (0xFD)
-            if byte == BOF || byte == EOF || byte == ESCAPE_BYTE {
-                output.push(ESCAPE_BYTE);
-                output.push(byte ^ ESCAPE_XOR);
-            } else {
-                output.push(byte);
-            }
-        }
-        
-        output.push(EOF);
-        output
     }
 }
 

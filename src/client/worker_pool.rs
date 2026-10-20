@@ -15,22 +15,53 @@ use crate::{EmberClient, EmberValue, Result};
 #[derive(Debug, Clone)]
 pub enum WorkerTask {
     /// Subscribe to a path
-    Subscribe { path: String },
+    Subscribe {
+        /// Path to subscribe to
+        path: String,
+    },
     /// Unsubscribe from a path
-    Unsubscribe { path: String },
+    Unsubscribe {
+        /// Path to unsubscribe from
+        path: String,
+    },
     /// Set a value at path
-    SetValue { path: String, value: EmberValue },
+    SetValue {
+        /// Path of the parameter to set
+        path: String,
+        /// Value to write
+        value: EmberValue,
+    },
     /// Expand a path and get children
-    Expand { path: String },
+    Expand {
+        /// Path to expand
+        path: String,
+    },
     /// Get element by path
-    GetElement { path: String },
+    GetElement {
+        /// Path of the element to fetch
+        path: String,
+    },
 }
 
 /// Result from a worker task
 #[derive(Debug, Clone)]
 pub enum TaskResult {
-    Success { task_id: u64, path: String },
-    Error { task_id: u64, path: String, error: String },
+    /// Task completed successfully
+    Success {
+        /// Identifier of the completed task
+        task_id: u64,
+        /// Path the task operated on
+        path: String,
+    },
+    /// Task failed
+    Error {
+        /// Identifier of the failed task
+        task_id: u64,
+        /// Path the task operated on
+        path: String,
+        /// Error description
+        error: String,
+    },
 }
 
 /// Configuration for the worker pool
@@ -57,11 +88,14 @@ impl Default for WorkerPoolConfig {
 /// Worker pool for parallel Ember+ operations
 pub struct WorkerPool {
     config: WorkerPoolConfig,
+    #[allow(dead_code)]
     address: String,
     task_tx: mpsc::Sender<(u64, WorkerTask)>,
     result_rx: Arc<RwLock<mpsc::Receiver<TaskResult>>>,
+    #[allow(dead_code)]
     result_tx: mpsc::Sender<TaskResult>,
     task_counter: Arc<RwLock<u64>>,
+    #[allow(dead_code)]
     semaphore: Arc<Semaphore>,
     shutdown_tx: broadcast::Sender<()>,
 }

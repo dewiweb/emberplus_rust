@@ -7,4 +7,4 @@ mod node;
 mod walker;
 
 pub use node::{EmberTree, TreeNode, TreeNodeRef, NodeContents};
-pub use walker::TreeWalker;
+pub use walker::{TreeWalker, find_by_identifier, find_by_pattern};

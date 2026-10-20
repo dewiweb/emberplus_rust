@@ -7,17 +7,15 @@
 mod tags;
 mod element;
 mod root;
-mod command;
+mod commands;
 mod stream;
 
 pub use tags::*;
 pub use element::*;
 pub use root::*;
-pub use command::*;
+pub use commands::*;
 pub use stream::*;
 
-use crate::error::Result;
-use crate::ber::{BerReader, BerWriter, BerEncode, BerDecode};
 
 /// Glow DTD version.
 pub const GLOW_DTD_VERSION: (u8, u8) = (2, 31);

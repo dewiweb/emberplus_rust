@@ -15,6 +15,7 @@ mod constants;
 
 pub use frame::{S101Frame, S101Message, MessageType, Command};
 pub use codec::{S101Codec, S101Decoder, S101Encoder};
+pub use crc::{calculate_crc, calculate_crc_escaped, verify_crc, append_crc};
 pub use constants::*;
 
 use crate::error::{S101Error, Result};

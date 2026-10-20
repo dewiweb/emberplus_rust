@@ -174,6 +174,7 @@ async fn discover_categories(client: &EmberClient) -> Result<ConsoleStructure> {
 
 /// Load channels for a specific category (limited to max_channels)
 /// Fast version - no fallback, just expand_with_info
+#[allow(dead_code)]
 async fn load_category_channels(
     client: &EmberClient,
     category_path: &str,

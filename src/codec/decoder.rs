@@ -1,7 +1,7 @@
 //! Glow decoder - converts BER bytes to Glow structures.
 
-use crate::error::{GlowError, Result};
-use crate::ber::{BerReader, Tag};
+use crate::error::Result;
+use crate::ber::BerReader;
 use crate::glow::{
     GlowRoot, GlowElement, GlowNode, GlowParameter, GlowFunction,
     GlowMatrix, GlowConnection, GlowCommand, GlowTemplate,
@@ -25,7 +25,7 @@ impl GlowDecoder {
     }
 
     /// Decode the root element.
-    fn decode_root(reader: &mut BerReader) -> Result<GlowRoot> {
+    fn decode_root(reader: &mut BerReader<'_>) -> Result<GlowRoot> {
         let mut root = GlowRoot::new();
 
         let tag = reader.peek_tag()?;
@@ -96,7 +96,7 @@ impl GlowDecoder {
     }
 
     /// Decode an element.
-    fn decode_element(reader: &mut BerReader) -> Result<Option<GlowElement>> {
+    fn decode_element(reader: &mut BerReader<'_>) -> Result<Option<GlowElement>> {
         if !reader.has_more() {
             return Ok(None);
         }
@@ -137,7 +137,7 @@ impl GlowDecoder {
     }
 
     /// Decode a node.
-    fn decode_node(reader: &mut BerReader) -> Result<GlowElement> {
+    fn decode_node(reader: &mut BerReader<'_>) -> Result<GlowElement> {
         let mut inner = reader.read_application(3)?;
         let mut node = GlowNode::new(0);
 
@@ -178,7 +178,7 @@ impl GlowDecoder {
     }
 
     /// Decode node contents.
-    fn decode_node_contents(reader: &mut BerReader, node: &mut GlowNode) -> Result<()> {
+    fn decode_node_contents(reader: &mut BerReader<'_>, node: &mut GlowNode) -> Result<()> {
         // Server may wrap contents in a SET (0x31) or SEQUENCE (0x30)
         let tag = reader.peek_tag()?;
         if tag.is_universal() && (tag.number == 17 || tag.number == 16) {
@@ -194,7 +194,7 @@ impl GlowDecoder {
     }
     
     /// Decode node contents inner.
-    fn decode_node_contents_inner(reader: &mut BerReader, node: &mut GlowNode) -> Result<()> {
+    fn decode_node_contents_inner(reader: &mut BerReader<'_>, node: &mut GlowNode) -> Result<()> {
         while reader.has_more() {
             let tag = reader.peek_tag()?;
             
@@ -215,7 +215,7 @@ impl GlowDecoder {
     }
 
     /// Decode a parameter.
-    fn decode_parameter(reader: &mut BerReader) -> Result<GlowElement> {
+    fn decode_parameter(reader: &mut BerReader<'_>) -> Result<GlowElement> {
         let mut inner = reader.read_application(1)?;
         let mut param = GlowParameter::new(0);
 
@@ -256,7 +256,7 @@ impl GlowDecoder {
     }
 
     /// Decode parameter contents.
-    fn decode_parameter_contents(reader: &mut BerReader, param: &mut GlowParameter) -> Result<()> {
+    fn decode_parameter_contents(reader: &mut BerReader<'_>, param: &mut GlowParameter) -> Result<()> {
         // Server may wrap contents in a SET (0x31 = tag 17) or SEQUENCE (0x30 = tag 16)
         let tag = reader.peek_tag()?;
         if tag.is_universal() && (tag.number == 17 || tag.number == 16) {
@@ -270,7 +270,7 @@ impl GlowDecoder {
     }
     
     /// Decode parameter contents inner (after unwrapping SET/SEQUENCE if present).
-    fn decode_parameter_contents_inner(reader: &mut BerReader, param: &mut GlowParameter) -> Result<()> {
+    fn decode_parameter_contents_inner(reader: &mut BerReader<'_>, param: &mut GlowParameter) -> Result<()> {
         while reader.has_more() {
             let tag = reader.peek_tag()?;
             
@@ -302,7 +302,7 @@ impl GlowDecoder {
     }
 
     /// Decode function contents, handling optional SET (0x31) wrapper from Lawo consoles.
-    fn decode_function_contents(reader: &mut BerReader, func: &mut GlowFunction) -> Result<()> {
+    fn decode_function_contents(reader: &mut BerReader<'_>, func: &mut GlowFunction) -> Result<()> {
         // Lawo consoles wrap Function contents in a SET (0x31) — unwrap if present
         if reader.has_more() {
             let tag = reader.peek_tag()?;
@@ -315,7 +315,7 @@ impl GlowDecoder {
         Self::decode_function_contents_inner(reader, func)
     }
 
-    fn decode_function_contents_inner(reader: &mut BerReader, func: &mut GlowFunction) -> Result<()> {
+    fn decode_function_contents_inner(reader: &mut BerReader<'_>, func: &mut GlowFunction) -> Result<()> {
         while reader.has_more() {
             let ctag = reader.peek_tag()?;
             if ctag.is_context() {
@@ -332,7 +332,7 @@ impl GlowDecoder {
     }
 
     /// Decode a function.
-    fn decode_function(reader: &mut BerReader) -> Result<GlowElement> {
+    fn decode_function(reader: &mut BerReader<'_>) -> Result<GlowElement> {
         let mut inner = reader.read_application(19)?;
         let mut func = GlowFunction::new(0);
 
@@ -357,7 +357,7 @@ impl GlowDecoder {
     }
 
     /// Decode a matrix.
-    fn decode_matrix(reader: &mut BerReader) -> Result<GlowElement> {
+    fn decode_matrix(reader: &mut BerReader<'_>) -> Result<GlowElement> {
         let mut inner = reader.read_application(13)?;
         let mut matrix = GlowMatrix::new(0);
 
@@ -387,10 +387,10 @@ impl GlowDecoder {
 
     /// Decode connections from context[5] of a matrix.
     /// Lawo format: context[5] → SEQUENCE → context[0] → Connection(app16)
-    fn decode_matrix_connections(reader: &mut BerReader, matrix: &mut GlowMatrix) -> Result<()> {
+    fn decode_matrix_connections(reader: &mut BerReader<'_>, matrix: &mut GlowMatrix) -> Result<()> {
         // Unwrap outer SEQUENCE (0x30) or SET (0x31) if present
         let mut work_reader;
-        let reader: &mut BerReader = if reader.has_more() {
+        let reader: &mut BerReader<'_> = if reader.has_more() {
             let tag = reader.peek_tag()?;
             if tag.is_universal() && (tag.number == 16 || tag.number == 17) {
                 let (_, value) = reader.read_tlv()?;
@@ -426,7 +426,7 @@ impl GlowDecoder {
     }
 
     /// Decode matrix contents, handling optional SET (0x31) or SEQUENCE (0x30) wrapper.
-    fn decode_matrix_contents(reader: &mut BerReader, matrix: &mut GlowMatrix) -> Result<()> {
+    fn decode_matrix_contents(reader: &mut BerReader<'_>, matrix: &mut GlowMatrix) -> Result<()> {
         if reader.has_more() {
             let tag = reader.peek_tag()?;
             // Lawo consoles wrap contents in SET (0x31) or SEQUENCE (0x30)
@@ -440,7 +440,7 @@ impl GlowDecoder {
     }
 
     /// Inner matrix contents decoder (context tags directly).
-    fn decode_matrix_contents_inner(reader: &mut BerReader, matrix: &mut GlowMatrix) -> Result<()> {
+    fn decode_matrix_contents_inner(reader: &mut BerReader<'_>, matrix: &mut GlowMatrix) -> Result<()> {
         while reader.has_more() {
             let tag = reader.peek_tag()?;
             
@@ -464,7 +464,7 @@ impl GlowDecoder {
     }
 
     /// Decode a connection.
-    fn decode_connection(reader: &mut BerReader) -> Result<Option<GlowConnection>> {
+    fn decode_connection(reader: &mut BerReader<'_>) -> Result<Option<GlowConnection>> {
         let tag = reader.peek_tag()?;
         if !tag.is_application() || tag.number != 16 {
             reader.skip()?;
@@ -508,7 +508,7 @@ impl GlowDecoder {
     }
 
     /// Decode a command.
-    fn decode_command(reader: &mut BerReader) -> Result<GlowElement> {
+    fn decode_command(reader: &mut BerReader<'_>) -> Result<GlowElement> {
         let mut inner = reader.read_application(2)?;
         let mut cmd_number = 0i32;
         let mut invocation_id = 0i32;
@@ -559,7 +559,7 @@ impl GlowDecoder {
     }
 
     /// Decode a qualified node.
-    fn decode_qualified_node(reader: &mut BerReader) -> Result<GlowElement> {
+    fn decode_qualified_node(reader: &mut BerReader<'_>) -> Result<GlowElement> {
         let mut inner = reader.read_application(10)?;
         let mut path = Vec::new();
         let mut node = GlowNode::new(0);
@@ -603,7 +603,7 @@ impl GlowDecoder {
     }
 
     /// Decode a qualified parameter.
-    fn decode_qualified_parameter(reader: &mut BerReader) -> Result<GlowElement> {
+    fn decode_qualified_parameter(reader: &mut BerReader<'_>) -> Result<GlowElement> {
         let mut inner = reader.read_application(9)?;
         let mut path = Vec::new();
         let mut param = GlowParameter::new(0);
@@ -633,7 +633,7 @@ impl GlowDecoder {
     }
 
     /// Decode a qualified function.
-    fn decode_qualified_function(reader: &mut BerReader) -> Result<GlowElement> {
+    fn decode_qualified_function(reader: &mut BerReader<'_>) -> Result<GlowElement> {
         let mut inner = reader.read_application(20)?;
         let mut path = Vec::new();
         let mut func = GlowFunction::new(0);
@@ -663,7 +663,7 @@ impl GlowDecoder {
     }
 
     /// Decode a qualified matrix.
-    fn decode_qualified_matrix(reader: &mut BerReader) -> Result<GlowElement> {
+    fn decode_qualified_matrix(reader: &mut BerReader<'_>) -> Result<GlowElement> {
         let mut inner = reader.read_application(17)?;
         let mut path = Vec::new();
         let mut matrix = GlowMatrix::new(0);
@@ -697,7 +697,7 @@ impl GlowDecoder {
     }
 
     /// Decode a template.
-    fn decode_template(reader: &mut BerReader) -> Result<GlowElement> {
+    fn decode_template(reader: &mut BerReader<'_>) -> Result<GlowElement> {
         let mut inner = reader.read_application(24)?;
         let mut template = GlowTemplate::default();
 
@@ -719,7 +719,7 @@ impl GlowDecoder {
     }
 
     /// Decode an invocation result.
-    fn decode_invocation_result(reader: &mut BerReader) -> Result<Option<InvocationResult>> {
+    fn decode_invocation_result(reader: &mut BerReader<'_>) -> Result<Option<InvocationResult>> {
         let mut inner = reader.read_application(23)?;
         let mut invocation_id = 0;
         let mut success = false;
@@ -768,7 +768,7 @@ impl GlowDecoder {
     }
 
     /// Decode a stream entry.
-    fn decode_stream_entry(reader: &mut BerReader) -> Result<Option<StreamEntry>> {
+    fn decode_stream_entry(reader: &mut BerReader<'_>) -> Result<Option<StreamEntry>> {
         let tag = reader.peek_tag()?;
         
         // StreamEntry can be wrapped in CONTEXT 0 or be direct APPLICATION 5
@@ -806,7 +806,7 @@ impl GlowDecoder {
     }
 
     /// Read a context-tagged string.
-    fn read_context_string(reader: &mut BerReader, _tag: u32) -> Result<String> {
+    fn read_context_string(reader: &mut BerReader<'_>, _tag: u32) -> Result<String> {
         let (_, data) = reader.read_tlv()?;
         // The context tag contains a UTF8String (0x0C) or other string type
         // Parse the inner TLV to get the actual string
@@ -823,26 +823,26 @@ impl GlowDecoder {
     }
 
     /// Read a context-tagged boolean.
-    fn read_context_bool(reader: &mut BerReader, _tag: u32) -> Result<bool> {
+    fn read_context_bool(reader: &mut BerReader<'_>, _tag: u32) -> Result<bool> {
         let (_, data) = reader.read_tlv()?;
         Ok(data.first().map(|&b| b != 0).unwrap_or(false))
     }
 
     /// Read a context-tagged path.
-    fn read_context_path(reader: &mut BerReader, _tag: u32) -> Result<EmberPath> {
+    fn read_context_path(reader: &mut BerReader<'_>, _tag: u32) -> Result<EmberPath> {
         let mut ctx = reader.read_context(0)?;
         let oid = ctx.read_relative_oid()?;
         Ok(oid.into_iter().map(|n| n as i32).collect())
     }
 
     /// Read a context-tagged value.
-    fn read_context_value(reader: &mut BerReader, _tag: u32) -> Result<EmberValue> {
+    fn read_context_value(reader: &mut BerReader<'_>, _tag: u32) -> Result<EmberValue> {
         let mut ctx = reader.read_context(_tag)?;
         Self::decode_value(&mut ctx)
     }
 
     /// Decode a value.
-    fn decode_value(reader: &mut BerReader) -> Result<EmberValue> {
+    fn decode_value(reader: &mut BerReader<'_>) -> Result<EmberValue> {
         let (tag, data) = reader.read_tlv()?;
 
         if tag.is_universal() {

@@ -2,7 +2,7 @@
 //!
 //! Run with: cargo run --example worker_pool_demo
 
-use ember_plus::{WorkerPool, WorkerPoolConfig, WorkerTask, Result};
+use ember_plus::{WorkerPool, WorkerPoolConfig, Result};
 use std::time::Instant;
 
 const LAWO_ADDRESS: &str = "192.168.100.199:9000";

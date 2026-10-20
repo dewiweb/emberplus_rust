@@ -2,7 +2,7 @@
 //!
 //! Run with: cargo run --example client -- <host:port>
 
-use ember_plus::{EmberClient, EmberValue, Result};
+use ember_plus::{EmberClient, Result};
 use tracing_subscriber::EnvFilter;
 
 #[tokio::main]

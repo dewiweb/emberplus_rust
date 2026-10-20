@@ -21,11 +21,26 @@ pub enum BerValue {
     /// Sequence of values
     Sequence(Vec<BerValue>),
     /// Context-tagged value
-    Context { tag: u32, value: Box<BerValue> },
+    Context {
+        /// Context tag number
+        tag: u32,
+        /// Tagged value
+        value: Box<BerValue>,
+    },
     /// Application-tagged value
-    Application { tag: u32, value: Box<BerValue> },
+    Application {
+        /// Application tag number
+        tag: u32,
+        /// Tagged value
+        value: Box<BerValue>,
+    },
     /// Raw TLV (for unknown or unprocessed data)
-    Raw { tag: Tag, data: Vec<u8> },
+    Raw {
+        /// Raw tag
+        tag: Tag,
+        /// Raw value bytes
+        data: Vec<u8>,
+    },
 }
 
 impl BerValue {
@@ -90,7 +105,7 @@ impl BerValue {
     }
 
     /// Decode a BER value from a reader.
-    pub fn decode_from_reader(reader: &mut BerReader) -> Result<Self> {
+    pub fn decode_from_reader(reader: &mut BerReader<'_>) -> Result<Self> {
         let (tag, value_bytes) = reader.read_tlv()?;
         
         if tag.is_universal() {
@@ -101,7 +116,6 @@ impl BerValue {
                 }
                 2 => {
                     // INTEGER
-                    let mut inner = BerReader::new(value_bytes);
                     // For raw value bytes, decode directly
                     let value = decode_integer_bytes(value_bytes)?;
                     Ok(BerValue::Integer(value))
@@ -126,7 +140,6 @@ impl BerValue {
                 16 => {
                     // SEQUENCE
                     let mut items = Vec::new();
-                    let mut inner = BerReader::new(value_bytes);
                     while inner.has_more() {
                         items.push(Self::decode_from_reader(&mut inner)?);
                     }

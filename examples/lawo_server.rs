@@ -3,16 +3,16 @@
 //! Serves a WebSocket API for the frontend to control and monitor the console.
 //! Run with: cargo run --example lawo_server
 
+#![allow(dead_code)]
+
 use ember_plus::{EmberClient, EmberValue, Result as EmberResult};
 use futures_util::{SinkExt, StreamExt};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::net::SocketAddr;
 use std::sync::Arc;
-use std::time::Duration;
 use tokio::net::{TcpListener, TcpStream};
 use tokio::sync::{broadcast, RwLock};
-use tokio::time::timeout;
 use tokio_tungstenite::{accept_async, tungstenite::Message};
 use tracing::{debug, error, info};
 
@@ -228,7 +228,7 @@ async fn handle_client_message(
     msg: WsMessage,
     state: &SharedState,
     broadcast_tx: &BroadcastTx,
-    ws_sender: &mut futures_util::stream::SplitSink<
+    _ws_sender: &mut futures_util::stream::SplitSink<
         tokio_tungstenite::WebSocketStream<TcpStream>,
         Message,
     >,

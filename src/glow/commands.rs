@@ -1,6 +1,5 @@
 //! Glow command handling.
 
-use crate::error::Result;
 use super::root::{GlowCommand, GlowElement, EmberPath};
 use super::element::EmberValue;
 

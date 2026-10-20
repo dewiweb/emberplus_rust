@@ -2,7 +2,7 @@
 //!
 //! Run with: cargo run --example explore_lawo_params
 
-use ember_plus::{EmberClient, Result, GlowElement};
+use ember_plus::{EmberClient, Result};
 use tracing_subscriber::EnvFilter;
 
 const LAWO_ADDRESS: &str = "192.168.100.199:9000";
@@ -156,7 +156,7 @@ fn print_node_recursive(
                 if desc.is_empty() { String::new() } else { format!("({})", desc) },
                 arguments.len(), result.len());
         }
-        ember_plus::tree::NodeContents::Matrix { matrix_type, target_count, source_count, .. } => {
+        ember_plus::tree::NodeContents::Matrix { matrix_type, .. } => {
             println!("{}🔀 #{} \"{}\" {} type={:?}", 
                 indent, num, id,
                 if desc.is_empty() { String::new() } else { format!("({})", desc) },
