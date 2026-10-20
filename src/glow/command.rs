@@ -251,25 +251,15 @@ mod tests {
     fn test_wrap_command_at_path() {
         let path = vec![0, 1, 2];
         let elements = CommandBuilder::get_directory_at_path(&path);
-        
+
         assert_eq!(elements.len(), 1);
-        
-        // Should be a nested structure: Node(0) -> Node(1) -> Node(2) -> Command
-        if let GlowElement::Node(n0) = &elements[0] {
-            assert_eq!(n0.number, 0);
-            if let GlowElement::Node(n1) = &n0.children[0] {
-                assert_eq!(n1.number, 1);
-                if let GlowElement::Node(n2) = &n1.children[0] {
-                    assert_eq!(n2.number, 2);
-                    assert!(matches!(n2.children[0], GlowElement::Command(GlowCommand::GetDirectory)));
-                } else {
-                    panic!("Expected Node at level 2");
-                }
-            } else {
-                panic!("Expected Node at level 1");
-            }
+
+        // Should be a QualifiedNode carrying the full path, with the command as child
+        if let GlowElement::QualifiedNode(p, node) = &elements[0] {
+            assert_eq!(p, &path);
+            assert!(matches!(node.children[0], GlowElement::Command(GlowCommand::GetDirectory)));
         } else {
-            panic!("Expected Node at level 0");
+            panic!("Expected QualifiedNode");
         }
     }
 }
