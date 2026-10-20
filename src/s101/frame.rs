@@ -153,6 +153,8 @@ pub struct S101Frame {
     pub message_type: MessageType,
     /// Command
     pub command: Command,
+    /// Ember flags (for multi-packet messages)
+    pub flags: EmberFlags,
     /// Payload (after header, before CRC)
     pub payload: Vec<u8>,
 }
@@ -164,6 +166,7 @@ impl S101Frame {
             slot: 0,
             message_type: MessageType::Ember,
             command: Command::Ember,
+            flags: EmberFlags::single_packet(),
             payload,
         }
     }
@@ -174,6 +177,7 @@ impl S101Frame {
             slot: 0,
             message_type: MessageType::Ember,
             command: Command::KeepAliveRequest,
+            flags: EmberFlags::default(),
             payload: vec![],
         }
     }
@@ -184,6 +188,7 @@ impl S101Frame {
             slot: 0,
             message_type: MessageType::Ember,
             command: Command::KeepAliveResponse,
+            flags: EmberFlags::default(),
             payload: vec![],
         }
     }
@@ -308,23 +313,24 @@ impl S101Frame {
         let message_type = MessageType::try_from(unescaped[MESSAGE_TYPE_OFFSET])?;
         let command = Command::try_from(unescaped[COMMAND_OFFSET])?;
         
-        // Extract payload based on command type
-        let payload = match command {
+        // Extract flags and payload based on command type
+        let (flags, payload) = match command {
             Command::KeepAliveRequest | Command::KeepAliveResponse => {
                 // Keep-alive: slot(1) + msg_type(1) + cmd(1) + version(1) = 4 bytes, no payload
-                vec![]
+                (EmberFlags::default(), vec![])
             }
             Command::Ember => {
                 // Ember data: slot(1) + msg_type(1) + cmd(1) + version(1) + flags(1) + dtd(1) + app_count(1) + app_bytes + payload
                 if unescaped.len() < 7 {
                     return Err(S101Error::IncompleteFrame.into());
                 }
+                let flags = EmberFlags::decode(unescaped[4]);
                 let app_bytes_count = unescaped[6] as usize;
                 let payload_start = 7 + app_bytes_count;
                 if payload_start > unescaped.len() {
                     return Err(S101Error::IncompleteFrame.into());
                 }
-                unescaped[payload_start..].to_vec()
+                (flags, unescaped[payload_start..].to_vec())
             }
         };
         
@@ -332,6 +338,7 @@ impl S101Frame {
             slot,
             message_type,
             command,
+            flags,
             payload,
         })
     }
@@ -342,7 +349,7 @@ impl S101Frame {
             Command::Ember => S101Message::EmberData {
                 dtd_type: 0x01,
                 app_bytes: vec![0x1F, 0x02],
-                flags: EmberFlags::single_packet(),
+                flags: self.flags,
                 payload: self.payload.clone(),
             },
             Command::KeepAliveRequest => S101Message::KeepAliveRequest,

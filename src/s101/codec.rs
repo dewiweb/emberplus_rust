@@ -12,6 +12,8 @@ pub struct S101Decoder {
     buffer: BytesMut,
     in_frame: bool,
     escape_next: bool,
+    /// Queue of complete frames waiting to be decoded
+    complete_frames: std::collections::VecDeque<BytesMut>,
 }
 
 impl S101Decoder {
@@ -21,6 +23,7 @@ impl S101Decoder {
             buffer: BytesMut::new(),
             in_frame: false,
             escape_next: false,
+            complete_frames: std::collections::VecDeque::new(),
         }
     }
 
@@ -42,7 +45,9 @@ impl S101Decoder {
             self.in_frame = true;
         } else if byte == EOF {
             if self.in_frame && !self.buffer.is_empty() {
-                // End of frame - keep the data for extraction
+                // End of frame - save complete frame to queue
+                let complete = self.buffer.split();
+                self.complete_frames.push_back(complete);
                 self.in_frame = false;
             }
         } else if byte == ESCAPE_BYTE && self.in_frame {
@@ -54,34 +59,31 @@ impl S101Decoder {
 
     /// Try to extract a complete frame.
     pub fn decode_frame(&mut self) -> Result<Option<S101Frame>> {
-        if self.buffer.is_empty() || self.in_frame {
-            return Ok(None);
-        }
+        // Get next complete frame from queue
+        let frame_data = match self.complete_frames.pop_front() {
+            Some(data) => data,
+            None => return Ok(None),
+        };
 
         // Verify CRC
-        if self.buffer.len() < 5 {
+        if frame_data.len() < 5 {
             // Too short for a valid frame
-            self.buffer.clear();
             return Err(S101Error::IncompleteFrame.into());
         }
 
-        if !crc::verify_crc(&self.buffer) {
-            let len = self.buffer.len();
-            let received = u16::from_be_bytes([self.buffer[len - 2], self.buffer[len - 1]]);
-            let calculated = crc::calculate_crc(&self.buffer[..len - 2]);
-            self.buffer.clear();
+        if !crc::verify_crc(&frame_data) {
+            let len = frame_data.len();
+            let received = u16::from_be_bytes([frame_data[len - 2], frame_data[len - 1]]);
+            let calculated = crc::calculate_crc(&frame_data[..len - 2]);
             return Err(S101Error::CrcMismatch {
                 expected: calculated,
                 actual: received,
             }.into());
         }
 
-        // Remove CRC
-        let payload_len = self.buffer.len() - 2;
-        self.buffer.truncate(payload_len);
-
-        // Parse frame header
-        let data = self.buffer.split();
+        // Remove CRC from data
+        let payload_len = frame_data.len() - 2;
+        let data = &frame_data[..payload_len];
         
         if data.len() < 3 {
             return Err(S101Error::IncompleteFrame.into());
@@ -91,23 +93,24 @@ impl S101Decoder {
         let message_type = super::frame::MessageType::try_from(data[1])?;
         let command = super::frame::Command::try_from(data[2])?;
 
-        // Extract payload based on command type
-        let payload = match command {
+        // Extract flags and payload based on command type
+        let (flags, payload) = match command {
             super::frame::Command::KeepAliveRequest | super::frame::Command::KeepAliveResponse => {
                 // Keep-alive: slot(1) + msg_type(1) + cmd(1) + version(1) = 4 bytes, no payload
-                vec![]
+                (super::frame::EmberFlags::default(), vec![])
             }
             super::frame::Command::Ember => {
                 // Ember data: slot(1) + msg_type(1) + cmd(1) + version(1) + flags(1) + dtd(1) + app_count(1) + app_bytes + payload
                 if data.len() < 7 {
                     return Err(S101Error::IncompleteFrame.into());
                 }
+                let flags = super::frame::EmberFlags::decode(data[4]);
                 let app_bytes_count = data[6] as usize;
                 let payload_start = 7 + app_bytes_count;
                 if payload_start > data.len() {
                     return Err(S101Error::IncompleteFrame.into());
                 }
-                data[payload_start..].to_vec()
+                (flags, data[payload_start..].to_vec())
             }
         };
 
@@ -115,6 +118,7 @@ impl S101Decoder {
             slot,
             message_type,
             command,
+            flags,
             payload,
         }))
     }

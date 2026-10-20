@@ -313,6 +313,12 @@ impl GlowEncoder {
             })?;
 
             match cmd {
+                GlowCommand::GetDirectory => {
+                    // DirFieldMask [1]: FieldFlags::All = -1
+                    w.write_context(1, |w2| {
+                        w2.write_integer(-1)
+                    })?;
+                }
                 GlowCommand::Invoke { invocation_id, arguments } => {
                     // Invoke options in context[2] with APPLICATION 22 (Invocation)
                     w.write_context(2, |w2| {
@@ -348,11 +354,14 @@ impl GlowEncoder {
             w.write_application(10, |w2| {
                 Self::encode_context_path(w2, 0, path)?;
 
-                // Always include context[1] with node contents (even if minimal)
-                // Server expects this to be present
-                w2.write_context(1, |w3| {
-                    Self::encode_node_contents(w3, node)
-                })?;
+                // Only include context[1] if there are contents to encode
+                if node.identifier.is_some() || node.description.is_some()
+                    || node.is_root.is_some() || node.is_online.is_some()
+                    || node.schema_identifiers.is_some() {
+                    w2.write_context(1, |w3| {
+                        Self::encode_node_contents(w3, node)
+                    })?;
+                }
 
                 if !node.children.is_empty() {
                     w2.write_context(2, |w3| {

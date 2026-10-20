@@ -257,6 +257,20 @@ impl GlowDecoder {
 
     /// Decode parameter contents.
     fn decode_parameter_contents(reader: &mut BerReader, param: &mut GlowParameter) -> Result<()> {
+        // Server may wrap contents in a SET (0x31 = tag 17) or SEQUENCE (0x30 = tag 16)
+        let tag = reader.peek_tag()?;
+        if tag.is_universal() && (tag.number == 17 || tag.number == 16) {
+            // SET or SEQUENCE wrapper - read the TLV and create inner reader
+            let (_, value) = reader.read_tlv()?;
+            let mut inner = BerReader::new(value);
+            return Self::decode_parameter_contents_inner(&mut inner, param);
+        }
+        
+        Self::decode_parameter_contents_inner(reader, param)
+    }
+    
+    /// Decode parameter contents inner (after unwrapping SET/SEQUENCE if present).
+    fn decode_parameter_contents_inner(reader: &mut BerReader, param: &mut GlowParameter) -> Result<()> {
         while reader.has_more() {
             let tag = reader.peek_tag()?;
             
@@ -283,6 +297,37 @@ impl GlowDecoder {
                 reader.skip()?;
             }
         }
+        
+        Ok(())
+    }
+
+    /// Decode function contents, handling optional SET (0x31) wrapper from Lawo consoles.
+    fn decode_function_contents(reader: &mut BerReader, func: &mut GlowFunction) -> Result<()> {
+        // Lawo consoles wrap Function contents in a SET (0x31) — unwrap if present
+        if reader.has_more() {
+            let tag = reader.peek_tag()?;
+            if tag.is_universal() && (tag.number == 17 || tag.number == 16) {
+                let (_, data) = reader.read_tlv()?;
+                let mut inner = BerReader::new(data);
+                return Self::decode_function_contents_inner(&mut inner, func);
+            }
+        }
+        Self::decode_function_contents_inner(reader, func)
+    }
+
+    fn decode_function_contents_inner(reader: &mut BerReader, func: &mut GlowFunction) -> Result<()> {
+        while reader.has_more() {
+            let ctag = reader.peek_tag()?;
+            if ctag.is_context() {
+                match ctag.number {
+                    0 => func.identifier = Some(Self::read_context_string(reader, 0)?),
+                    1 => func.description = Some(Self::read_context_string(reader, 1)?),
+                    _ => { reader.skip()?; }
+                }
+            } else {
+                reader.skip()?;
+            }
+        }
         Ok(())
     }
 
@@ -299,18 +344,7 @@ impl GlowDecoder {
                     0 => func.number = inner.read_context_integer(0)? as i32,
                     1 => {
                         let mut contents = inner.read_context(1)?;
-                        while contents.has_more() {
-                            let ctag = contents.peek_tag()?;
-                            if ctag.is_context() {
-                                match ctag.number {
-                                    0 => func.identifier = Some(Self::read_context_string(&mut contents, 0)?),
-                                    1 => func.description = Some(Self::read_context_string(&mut contents, 1)?),
-                                    _ => { contents.skip()?; }
-                                }
-                            } else {
-                                contents.skip()?;
-                            }
-                        }
+                        Self::decode_function_contents(&mut contents, &mut func)?;
                     }
                     _ => { inner.skip()?; }
                 }
@@ -338,12 +372,8 @@ impl GlowDecoder {
                         Self::decode_matrix_contents(&mut contents, &mut matrix)?;
                     }
                     5 => {
-                        let mut conns = inner.read_context(5)?;
-                        while conns.has_more() {
-                            if let Some(conn) = Self::decode_connection(&mut conns)? {
-                                matrix.connections.push(conn);
-                            }
-                        }
+                        let mut conns_ctx = inner.read_context(5)?;
+                        Self::decode_matrix_connections(&mut conns_ctx, &mut matrix)?
                     }
                     _ => { inner.skip()?; }
                 }
@@ -355,8 +385,62 @@ impl GlowDecoder {
         Ok(GlowElement::Matrix(matrix))
     }
 
-    /// Decode matrix contents.
+    /// Decode connections from context[5] of a matrix.
+    /// Lawo format: context[5] → SEQUENCE → context[0] → Connection(app16)
+    fn decode_matrix_connections(reader: &mut BerReader, matrix: &mut GlowMatrix) -> Result<()> {
+        // Unwrap outer SEQUENCE (0x30) or SET (0x31) if present
+        let mut work_reader;
+        let reader: &mut BerReader = if reader.has_more() {
+            let tag = reader.peek_tag()?;
+            if tag.is_universal() && (tag.number == 16 || tag.number == 17) {
+                let (_, value) = reader.read_tlv()?;
+                work_reader = BerReader::new(value);
+                &mut work_reader
+            } else {
+                reader
+            }
+        } else {
+            return Ok(());
+        };
+
+        while reader.has_more() {
+            let tag = reader.peek_tag()?;
+            if tag.is_context() {
+                // context[0] wraps a Connection app(16)
+                let mut ctx = reader.read_context(tag.number)?;
+                if ctx.has_more() {
+                    if let Some(conn) = Self::decode_connection(&mut ctx)? {
+                        matrix.connections.push(conn);
+                    }
+                }
+            } else if tag.is_application() && tag.number == 16 {
+                // Direct Connection app(16)
+                if let Some(conn) = Self::decode_connection(reader)? {
+                    matrix.connections.push(conn);
+                }
+            } else {
+                reader.skip()?;
+            }
+        }
+        Ok(())
+    }
+
+    /// Decode matrix contents, handling optional SET (0x31) or SEQUENCE (0x30) wrapper.
     fn decode_matrix_contents(reader: &mut BerReader, matrix: &mut GlowMatrix) -> Result<()> {
+        if reader.has_more() {
+            let tag = reader.peek_tag()?;
+            // Lawo consoles wrap contents in SET (0x31) or SEQUENCE (0x30)
+            if tag.is_universal() && (tag.number == 17 || tag.number == 16) {
+                let (_, value) = reader.read_tlv()?;
+                let mut inner = BerReader::new(value);
+                return Self::decode_matrix_contents_inner(&mut inner, matrix);
+            }
+        }
+        Self::decode_matrix_contents_inner(reader, matrix)
+    }
+
+    /// Inner matrix contents decoder (context tags directly).
+    fn decode_matrix_contents_inner(reader: &mut BerReader, matrix: &mut GlowMatrix) -> Result<()> {
         while reader.has_more() {
             let tag = reader.peek_tag()?;
             
@@ -397,8 +481,18 @@ impl GlowDecoder {
                     0 => conn.target = inner.read_context_integer(0)? as i32,
                     1 => {
                         let mut sources = inner.read_context(1)?;
-                        while sources.has_more() {
-                            conn.sources.push(sources.read_integer()? as i32);
+                        if sources.has_more() {
+                            let src_tag = sources.peek_tag()?;
+                            if src_tag.is_universal() && src_tag.number == 13 {
+                                // RELATIVE-OID encoding of source list
+                                let oid = sources.read_relative_oid()?;
+                                for v in oid { conn.sources.push(v as i32); }
+                            } else {
+                                // Fallback: sequence of integers
+                                while sources.has_more() {
+                                    conn.sources.push(sources.read_integer()? as i32);
+                                }
+                            }
                         }
                     }
                     2 => conn.operation = Some(ConnectionOperation::try_from(inner.read_context_integer(2)?)?),
@@ -552,18 +646,7 @@ impl GlowDecoder {
                     0 => path = Self::read_context_path(&mut inner, 0)?,
                     1 => {
                         let mut contents = inner.read_context(1)?;
-                        while contents.has_more() {
-                            let ctag = contents.peek_tag()?;
-                            if ctag.is_context() {
-                                match ctag.number {
-                                    0 => func.identifier = Some(Self::read_context_string(&mut contents, 0)?),
-                                    1 => func.description = Some(Self::read_context_string(&mut contents, 1)?),
-                                    _ => { contents.skip()?; }
-                                }
-                            } else {
-                                contents.skip()?;
-                            }
-                        }
+                        Self::decode_function_contents(&mut contents, &mut func)?;
                     }
                     _ => { inner.skip()?; }
                 }
@@ -594,6 +677,10 @@ impl GlowDecoder {
                     1 => {
                         let mut contents = inner.read_context(1)?;
                         Self::decode_matrix_contents(&mut contents, &mut matrix)?;
+                    }
+                    5 => {
+                        let mut conns_ctx = inner.read_context(5)?;
+                        Self::decode_matrix_connections(&mut conns_ctx, &mut matrix)?
                     }
                     _ => { inner.skip()?; }
                 }
@@ -646,9 +733,28 @@ impl GlowDecoder {
                     0 => invocation_id = inner.read_context_integer(0)? as i32,
                     1 => success = Self::read_context_bool(&mut inner, 1)?,
                     2 => {
+                        // context[2] contains a SEQUENCE of CONTEXT(0)-wrapped values
                         let mut res = inner.read_context(2)?;
-                        while res.has_more() {
-                            result.push(Self::decode_value(&mut res)?);
+                        if res.has_more() {
+                            let seq_tag = res.peek_tag()?;
+                            // Unwrap the SEQUENCE if present
+                            if seq_tag.is_universal() && seq_tag.number == 16 {
+                                let mut seq = res.read_sequence()?;
+                                while seq.has_more() {
+                                    let item_tag = seq.peek_tag()?;
+                                    if item_tag.is_context() && item_tag.number == 0 {
+                                        let mut item = seq.read_context(0)?;
+                                        result.push(Self::decode_value(&mut item)?);
+                                    } else {
+                                        seq.skip()?;
+                                    }
+                                }
+                            } else {
+                                // Fallback: read values directly
+                                while res.has_more() {
+                                    result.push(Self::decode_value(&mut res)?);
+                                }
+                            }
                         }
                     }
                     _ => { inner.skip()?; }
@@ -664,12 +770,22 @@ impl GlowDecoder {
     /// Decode a stream entry.
     fn decode_stream_entry(reader: &mut BerReader) -> Result<Option<StreamEntry>> {
         let tag = reader.peek_tag()?;
-        if !tag.is_application() || tag.number != 5 {
+        
+        // StreamEntry can be wrapped in CONTEXT 0 or be direct APPLICATION 5
+        let mut inner = if tag.is_context() && tag.number == 0 {
+            // Unwrap from context[0]
+            let mut ctx = reader.read_context(0)?;
+            let inner_tag = ctx.peek_tag()?;
+            if !inner_tag.is_application() || inner_tag.number != 5 {
+                return Ok(None);
+            }
+            ctx.read_application(5)?
+        } else if tag.is_application() && tag.number == 5 {
+            reader.read_application(5)?
+        } else {
             reader.skip()?;
             return Ok(None);
-        }
-
-        let mut inner = reader.read_application(5)?;
+        };
         let mut stream_identifier = 0;
         let mut value = EmberValue::Null;
 

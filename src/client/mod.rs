@@ -9,4 +9,7 @@
 
 mod connection;
 
-pub use connection::EmberClient;
+mod worker_pool;
+
+pub use connection::{EmberClient, ChildInfo, ClientConfig, ElementType};
+pub use worker_pool::{WorkerPool, WorkerPoolConfig, WorkerTask, TaskResult};

@@ -112,6 +112,21 @@ impl CommandBuilder {
         Self::wrap_command_at_path(path, GlowCommand::Unsubscribe, None)
     }
 
+    /// Create subscribe commands for multiple paths in a single message.
+    /// All QualifiedNodes are combined into one Vec for a single GlowRoot packet.
+    pub fn subscribe_many_paths(paths: &[EmberPath]) -> Vec<GlowElement> {
+        paths.iter()
+            .flat_map(|path| Self::wrap_command_at_path(path, GlowCommand::Subscribe, None))
+            .collect()
+    }
+
+    /// Create unsubscribe commands for multiple paths in a single message.
+    pub fn unsubscribe_many_paths(paths: &[EmberPath]) -> Vec<GlowElement> {
+        paths.iter()
+            .flat_map(|path| Self::wrap_command_at_path(path, GlowCommand::Unsubscribe, None))
+            .collect()
+    }
+
     /// Wrap a command in a QualifiedNode to reach the given path.
     fn wrap_command_at_path(path: &EmberPath, command: GlowCommand, identifier: Option<&str>) -> Vec<GlowElement> {
         if path.is_empty() {

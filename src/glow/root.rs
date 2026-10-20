@@ -8,7 +8,15 @@ use super::element::EmberValue;
 /// A path through the Ember+ tree (sequence of node numbers).
 pub type EmberPath = Vec<i32>;
 
-/// Parse a path string into a path vector.
+/// Parse a path string (dot-separated numeric) into a path vector.
+///
+/// Accepts ONLY numeric paths like "28548.28549.54770".
+///
+/// **IMPORTANT**: Ember+ identifier strings like "_40001070" are NOT
+/// numeric hex conversions of node numbers. On Lawo MC², identifier
+/// "_40001070" (EQ) resolves to number 41878, NOT 0x40001070.
+/// For identifier-based paths (e.g. "_2/_1/_1/_3e9"), use
+/// `EmberClient::navigate_by_identifiers()` instead.
 pub fn parse_path(path: &str) -> Result<EmberPath> {
     if path.is_empty() {
         return Ok(vec![]);
@@ -17,7 +25,10 @@ pub fn parse_path(path: &str) -> Result<EmberPath> {
     path.split('.')
         .map(|s| {
             s.parse::<i32>().map_err(|_| {
-                GlowError::InvalidPath(format!("invalid path component: {}", s)).into()
+                GlowError::InvalidPath(format!(
+                    "invalid path component: '{}'. Use navigate_by_identifiers() for identifier paths like _2/_1/_3e9",
+                    s
+                )).into()
             })
         })
         .collect()
@@ -440,11 +451,12 @@ pub enum GlowCommand {
 }
 
 impl GlowCommand {
-    /// Get the command number.
+    /// Get the command number according to Glow DTD.
+    /// See: https://github.com/Lawo/ember-plus/wiki/Ember+-Glow-DTD
     pub fn number(&self) -> i32 {
         match self {
-            GlowCommand::Subscribe => 1,
-            GlowCommand::Unsubscribe => 2,
+            GlowCommand::Subscribe => 30,      // Was incorrectly 1
+            GlowCommand::Unsubscribe => 31,    // Was incorrectly 2
             GlowCommand::GetDirectory => 32,
             GlowCommand::Invoke { .. } => 33,
         }

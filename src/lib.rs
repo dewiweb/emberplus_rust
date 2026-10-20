@@ -73,5 +73,5 @@ pub mod codec;
 pub use error::{Error, Result};
 pub use types::*;
 pub use tree::*;
-pub use client::EmberClient;
+pub use client::{EmberClient, ChildInfo, ElementType, WorkerPool, WorkerPoolConfig, WorkerTask, TaskResult};
 pub use server::EmberServer;
